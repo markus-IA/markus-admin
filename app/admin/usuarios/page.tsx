@@ -12,21 +12,8 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface EditPlanForm {
-  plan: string;
-  expires_at: string;
-  leads_limit: number;
   is_active: boolean;
-  is_approved: boolean;
 }
-
-// ─── Plan badge ───────────────────────────────────────────────────────────────
-
-const PLAN_STYLES: Record<string, string> = {
-  FREE: "text-text-muted bg-white/5 border-white/10",
-  STARTER: "text-primary bg-primary/10 border-primary/20",
-  PRO: "text-secondary bg-secondary/10 border-secondary/20",
-  ENTERPRISE: "text-success bg-success/10 border-success/20",
-};
 
 // ─── Modal ───────────────────────────────────────────────────────────────────
 
@@ -40,13 +27,7 @@ function EditPlanModal({
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<EditPlanForm>({
-    plan: user.plan,
-    expires_at: user.plan_expires_at
-      ? user.plan_expires_at.slice(0, 10)
-      : "",
-    leads_limit: user.leads_limit,
     is_active: user.is_active,
-    is_approved: user.is_approved,
   });
   const [saving, setSaving] = useState(false);
 
@@ -57,11 +38,7 @@ function EditPlanModal({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          plan: form.plan,
-          expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
-          leads_limit: Number(form.leads_limit),
           is_active: form.is_active,
-          is_approved: form.is_approved,
         }),
       });
       toast.success("Plano atualizado com sucesso.");
@@ -91,44 +68,6 @@ function EditPlanModal({
 
         {/* Body */}
         <div className="px-6 py-5 space-y-4">
-          {/* Plan select */}
-          <div>
-            <label className="text-[11px] text-text-muted mb-1.5 block">Plano</label>
-            <select
-              value={form.plan}
-              onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value }))}
-              className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-secondary/50"
-            >
-              <option value="FREE">FREE</option>
-              <option value="STARTER">STARTER</option>
-              <option value="PRO">PRO</option>
-              <option value="ENTERPRISE">ENTERPRISE</option>
-            </select>
-          </div>
-
-          {/* Expires at */}
-          <div>
-            <label className="text-[11px] text-text-muted mb-1.5 block">Data de Expiração</label>
-            <input
-              type="date"
-              value={form.expires_at}
-              onChange={(e) => setForm((f) => ({ ...f, expires_at: e.target.value }))}
-              className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-secondary/50"
-            />
-          </div>
-
-          {/* Leads limit */}
-          <div>
-            <label className="text-[11px] text-text-muted mb-1.5 block">Limite de Leads</label>
-            <input
-              type="number"
-              value={form.leads_limit}
-              onChange={(e) => setForm((f) => ({ ...f, leads_limit: Number(e.target.value) }))}
-              min={0}
-              className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-secondary/50"
-            />
-          </div>
-
           {/* Toggles */}
           <div className="flex gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -145,21 +84,6 @@ function EditPlanModal({
                 />
               </div>
               <span className="text-xs text-text-secondary">Ativo</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <div
-                onClick={() => setForm((f) => ({ ...f, is_approved: !f.is_approved }))}
-                className={`relative w-9 h-5 rounded-full transition-colors ${
-                  form.is_approved ? "bg-primary" : "bg-white/10"
-                }`}
-              >
-                <div
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                    form.is_approved ? "translate-x-4" : "translate-x-0.5"
-                  }`}
-                />
-              </div>
-              <span className="text-xs text-text-secondary">Aprovado</span>
             </label>
           </div>
         </div>
@@ -191,11 +115,9 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filterPlan, setFilterPlan] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -230,22 +152,6 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleApprove = async (user: AdminUser) => {
-    setApprovingId(user.id);
-    try {
-      await apiFetch(`/api/v1/admin/users/${user.id}/plan`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: user.plan, is_approved: true }),
-      });
-      toast.success("Usuário aprovado!");
-      fetchUsers();
-    } catch (err: any) {
-      toast.error(err?.message || "Erro ao aprovar.");
-    } finally {
-      setApprovingId(null);
-    }
-  };
 
   // Client-side filtering
   const filtered = users.filter((u) => {
@@ -257,10 +163,8 @@ export default function AdminUsersPage() {
       )
         return false;
     }
-    if (filterPlan && u.plan !== filterPlan) return false;
     if (filterStatus === "active" && !u.is_active) return false;
     if (filterStatus === "inactive" && u.is_active) return false;
-    if (filterStatus === "pending" && u.is_approved) return false;
     return true;
   });
 
@@ -298,17 +202,6 @@ export default function AdminUsersPage() {
           />
         </div>
         <select
-          value={filterPlan}
-          onChange={(e) => setFilterPlan(e.target.value)}
-          className="bg-surface border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-primary/40"
-        >
-          <option value="">Todos os planos</option>
-          <option value="FREE">FREE</option>
-          <option value="STARTER">STARTER</option>
-          <option value="PRO">PRO</option>
-          <option value="ENTERPRISE">ENTERPRISE</option>
-        </select>
-        <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
           className="bg-surface border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-primary/40"
@@ -316,11 +209,10 @@ export default function AdminUsersPage() {
           <option value="">Todos os status</option>
           <option value="active">Ativo</option>
           <option value="inactive">Inativo</option>
-          <option value="pending">Pendente aprovação</option>
         </select>
-        {(search || filterPlan || filterStatus) && (
+        {(search || filterStatus) && (
           <button
-            onClick={() => { setSearch(""); setFilterPlan(""); setFilterStatus(""); }}
+            onClick={() => { setSearch(""); setFilterStatus(""); }}
             className="flex items-center gap-1.5 text-[11px] text-text-muted hover:text-danger px-3 py-2 border border-border-subtle rounded-lg transition-colors"
           >
             <X className="w-3.5 h-3.5" /> Limpar
@@ -336,8 +228,6 @@ export default function AdminUsersPage() {
               <tr className="border-b border-border-subtle bg-white/2">
                 <th className="text-left px-5 py-3 text-[10px] font-semibold text-text-muted tracking-wider">USUÁRIO</th>
                 <th className="text-left px-4 py-3 text-[10px] font-semibold text-text-muted tracking-wider">EMAIL</th>
-                <th className="text-left px-4 py-3 text-[10px] font-semibold text-text-muted tracking-wider">PLANO</th>
-                <th className="text-left px-4 py-3 text-[10px] font-semibold text-text-muted tracking-wider">LEADS</th>
                 <th className="text-left px-4 py-3 text-[10px] font-semibold text-text-muted tracking-wider">STATUS</th>
                 <th className="text-left px-4 py-3 text-[10px] font-semibold text-text-muted tracking-wider">CRIADO EM</th>
                 <th className="text-right px-5 py-3 text-[10px] font-semibold text-text-muted tracking-wider">AÇÕES</th>
@@ -371,7 +261,7 @@ export default function AdminUsersPage() {
                 filtered.map((user) => {
                   const initials = (user.name || user.email || "?")
                     .split(" ")
-                    .map((w) => w[0])
+                    .map((w: string) => w[0])
                     .slice(0, 2)
                     .join("")
                     .toUpperCase();
@@ -406,32 +296,10 @@ export default function AdminUsersPage() {
                         </span>
                       </td>
 
-                      {/* Plan */}
-                      <td className="px-4 py-3">
-                        <span
-                          className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
-                            PLAN_STYLES[user.plan] || PLAN_STYLES.FREE
-                          }`}
-                        >
-                          {user.plan}
-                        </span>
-                      </td>
-
-                      {/* Leads */}
-                      <td className="px-4 py-3">
-                        <span className="text-[11px] font-mono text-text-secondary">
-                          {user.leads_limit.toLocaleString("pt-BR")}
-                        </span>
-                      </td>
-
                       {/* Status */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          {!user.is_approved ? (
-                            <span className="flex items-center gap-1 text-[10px] text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 px-2 py-0.5 rounded">
-                              Pendente
-                            </span>
-                          ) : user.is_active ? (
+                          {user.is_active ? (
                             <span className="flex items-center gap-1 text-[10px] text-success bg-success/10 border border-success/20 px-2 py-0.5 rounded">
                               <div className="w-1 h-1 rounded-full bg-success" />
                               Ativo
@@ -452,17 +320,7 @@ export default function AdminUsersPage() {
                       {/* Actions */}
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-2">
-                          {/* Approve button */}
-                          {!user.is_approved && (
-                            <button
-                              onClick={() => handleApprove(user)}
-                              disabled={approvingId === user.id}
-                              className="flex items-center gap-1 text-[10px] text-primary border border-primary/30 hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                              <UserCheck className="w-3 h-3" />
-                              Aprovar
-                            </button>
-                          )}
+
 
                           {/* Edit plan button */}
                           <button
