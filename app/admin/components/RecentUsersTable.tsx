@@ -22,12 +22,6 @@ interface Props {
   loading: boolean;
 }
 
-const planColors: Record<string, string> = {
-  FREE: "text-text-muted bg-white/5 border-white/10",
-  STARTER: "text-primary bg-primary/10 border-primary/20",
-  PRO: "text-secondary bg-secondary/10 border-secondary/20",
-  ENTERPRISE: "text-success bg-success/10 border-success/20",
-};
 
 export function RecentUsersTable({ users, loading }: Props) {
   return (
@@ -84,13 +78,6 @@ export function RecentUsersTable({ users, loading }: Props) {
                   <p className="text-[11px] text-text-muted truncate">{user.email}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
-                      planColors[user.plan] || planColors.FREE
-                    }`}
-                  >
-                    {user.plan}
-                  </span>
                   <p className="text-[11px] text-text-muted">{timeAgo(user.created_at)}</p>
                 </div>
               </div>

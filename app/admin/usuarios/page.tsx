@@ -34,14 +34,14 @@ function EditPlanModal({
   const handleSave = async () => {
     setSaving(true);
     try {
-      await apiFetch(`/api/v1/admin/users/${user.id}/plan`, {
+      await apiFetch(`/api/v1/admin/users/${user.id}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           is_active: form.is_active,
         }),
       });
-      toast.success("Plano atualizado com sucesso.");
+      toast.success("Usuário atualizado com sucesso.");
       onSaved();
       onClose();
     } catch (err: any) {
@@ -58,7 +58,7 @@ function EditPlanModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-secondary/5">
           <div>
-            <h2 className="text-sm font-semibold text-text-primary">Editar Plano</h2>
+            <h2 className="text-sm font-semibold text-text-primary">Editar Usuário</h2>
             <p className="text-[11px] text-text-muted">{user.email}</p>
           </div>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">
@@ -178,7 +178,7 @@ export default function AdminUsersPage() {
             <h1 className="text-lg font-bold text-text-primary">Usuários</h1>
             <span className="text-[11px] font-mono text-text-muted">({users.length})</span>
           </div>
-          <p className="text-[12px] text-text-muted">Gestão de contas e planos</p>
+          <p className="text-[12px] text-text-muted">Gestão de contas</p>
         </div>
         <button
           onClick={() => fetchUsers()}
@@ -322,7 +322,6 @@ export default function AdminUsersPage() {
                         <div className="flex items-center justify-end gap-2">
 
 
-                          {/* Edit plan button */}
                           <button
                             onClick={() => setEditUser(user)}
                             className="flex items-center gap-1 text-[10px] text-text-muted border border-border-subtle hover:border-secondary/40 hover:text-secondary px-2 py-1 rounded-lg transition-colors"

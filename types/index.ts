@@ -3,14 +3,9 @@ export interface User {
   name: string | null
   email: string | null
   username: string | null
-  plan: "FREE" | "STARTER" | "PRO" | "ENTERPRISE"
-  leads_limit: number
-  bonus_leads: number
   is_active: boolean
-  is_approved: boolean
   role: "admin" | "user"
   avatar_url: string | null
-  plan_expires_at: string | null
   created_at: string
 }
 
@@ -30,14 +25,9 @@ export interface AdminUser {
   name: string | null
   email: string | null
   username: string | null
-  plan: "FREE" | "STARTER" | "PRO" | "ENTERPRISE"
-  leads_limit: number
-  bonus_leads: number
   is_active: boolean
-  is_approved: boolean
   role: "admin" | "user"
   avatar_url: string | null
-  plan_expires_at: string | null
   created_at: string
 }
 
