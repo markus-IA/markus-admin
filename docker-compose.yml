@@ -1,0 +1,14 @@
+services:
+  markus-admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: markus-admin
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
