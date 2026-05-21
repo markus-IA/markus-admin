@@ -1,0 +1,386 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { apiFetch } from "@/lib/api";
+import toast from "react-hot-toast";
+import {
+  Landmark, CheckCircle2, XCircle, Edit2, Trash2,
+  X, RefreshCw, Eye, EyeOff,
+} from "lucide-react";
+
+// ─── Gateway definitions ──────────────────────────────────────────────────────
+
+interface GatewayDef {
+  type: string;
+  label: string;
+  apiKeyLabel: string;
+  secretKeyLabel?: string;
+}
+
+const GATEWAYS: GatewayDef[] = [
+  { type: "pushinpay",  label: "PushinPay",  apiKeyLabel: "Token" },
+  { type: "wiinpay",   label: "WiinPay",    apiKeyLabel: "API Key" },
+  { type: "oasyfy",    label: "Oasyfy",     apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key" },
+  { type: "syncpay",   label: "SyncPay",    apiKeyLabel: "Client ID",    secretKeyLabel: "Client Secret" },
+  { type: "brpix",     label: "BRPix",      apiKeyLabel: "API Key" },
+  { type: "pixgate",   label: "PixGate",    apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key" },
+  { type: "paradise",  label: "Paradise",   apiKeyLabel: "API Key",      secretKeyLabel: "Product Hash" },
+  { type: "cnpay",     label: "CNPay",      apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key" },
+  { type: "nexuspay",  label: "NexusPay",   apiKeyLabel: "API Key" },
+];
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface PlatformGateway {
+  id: string;
+  gateway_type: string;
+  nickname: string;
+  is_active: boolean;
+  has_api_key: boolean;
+  has_secret_key: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Modal ───────────────────────────────────────────────────────────────────
+
+function GatewayModal({
+  def,
+  existing,
+  onClose,
+  onSaved,
+}: {
+  def: GatewayDef;
+  existing?: PlatformGateway;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [nickname, setNickname] = useState(existing?.nickname ?? "");
+  const [apiKey, setApiKey] = useState("");
+  const [secretKey, setSecretKey] = useState("");
+  const [isActive, setIsActive] = useState(existing?.is_active ?? true);
+  const [showApi, setShowApi] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!existing && !apiKey.trim()) {
+      toast.error(`${def.apiKeyLabel} é obrigatório.`);
+      return;
+    }
+    setSaving(true);
+    try {
+      const body: Record<string, unknown> = { nickname, is_active: isActive };
+      if (apiKey.trim()) body.api_key = apiKey.trim();
+      if (secretKey.trim()) body.secret_key = secretKey.trim();
+
+      await apiFetch(`/api/v1/admin/gateways/${def.type}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      toast.success("Gateway salvo com sucesso.");
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao salvar.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl border border-secondary/30 bg-surface shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-secondary/5">
+          <div>
+            <h2 className="text-sm font-semibold text-text-primary">
+              {existing ? "Editar" : "Configurar"} {def.label}
+            </h2>
+            <p className="text-[11px] text-text-muted">Conta da plataforma para receber split</p>
+          </div>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+          {/* Nickname */}
+          <div>
+            <label className="text-[11px] text-text-muted block mb-1">Apelido (identificação interna)</label>
+            <input
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder={`ex: Conta principal ${def.label}`}
+              className="w-full bg-surface border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-secondary/40"
+            />
+          </div>
+
+          {/* API Key */}
+          <div>
+            <label className="text-[11px] text-text-muted block mb-1">
+              {def.apiKeyLabel}
+              {existing?.has_api_key && (
+                <span className="ml-2 text-success">● configurado</span>
+              )}
+            </label>
+            <div className="relative">
+              <input
+                type={showApi ? "text" : "password"}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={existing?.has_api_key ? "Deixe em branco para manter o atual" : `Cole seu ${def.apiKeyLabel}`}
+                className="w-full bg-surface border border-border-subtle rounded-lg pl-3 pr-9 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-secondary/40"
+              />
+              <button
+                type="button"
+                onClick={() => setShowApi((v) => !v)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+              >
+                {showApi ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Secret Key — only for gateways that need it */}
+          {def.secretKeyLabel && (
+            <div>
+              <label className="text-[11px] text-text-muted block mb-1">
+                {def.secretKeyLabel}
+                {existing?.has_secret_key && (
+                  <span className="ml-2 text-success">● configurado</span>
+                )}
+              </label>
+              <div className="relative">
+                <input
+                  type={showSecret ? "text" : "password"}
+                  value={secretKey}
+                  onChange={(e) => setSecretKey(e.target.value)}
+                  placeholder={existing?.has_secret_key ? "Deixe em branco para manter o atual" : `Cole seu ${def.secretKeyLabel}`}
+                  className="w-full bg-surface border border-border-subtle rounded-lg pl-3 pr-9 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-secondary/40"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecret((v) => !v)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+                >
+                  {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Active toggle */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <div
+              onClick={() => setIsActive((v) => !v)}
+              className={`relative w-9 h-5 rounded-full transition-colors ${isActive ? "bg-success" : "bg-white/10"}`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${isActive ? "translate-x-4" : "translate-x-0.5"}`} />
+            </div>
+            <span className="text-xs text-text-secondary">Ativo para receber split</span>
+          </label>
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 px-6 pb-5">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2 rounded-lg border border-border-subtle text-sm text-text-muted hover:bg-white/5 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 py-2 rounded-lg bg-secondary text-white text-sm font-medium hover:bg-secondary/90 transition-colors disabled:opacity-50"
+          >
+            {saving ? "Salvando..." : "Salvar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function AdminGatewaysPage() {
+  const [accounts, setAccounts] = useState<PlatformGateway[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalDef, setModalDef] = useState<GatewayDef | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const fetchAccounts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch<PlatformGateway[]>("/api/v1/admin/gateways");
+      setAccounts(Array.isArray(data) ? data : []);
+    } catch {
+      setAccounts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
+
+  const getAccount = (type: string) => accounts.find((a) => a.gateway_type === type);
+
+  const handleDelete = async (type: string) => {
+    if (!confirm(`Remover conta ${type} da plataforma?`)) return;
+    setDeleting(type);
+    try {
+      await apiFetch(`/api/v1/admin/gateways/${type}`, { method: "DELETE" });
+      toast.success("Gateway removido.");
+      fetchAccounts();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao remover.");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const configured = accounts.filter((a) => a.is_active).length;
+
+  return (
+    <div className="px-4 py-5 md:px-8 md:py-6 max-w-[1400px] mx-auto space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Landmark className="w-5 h-5 text-secondary" />
+            <h1 className="text-lg font-bold text-text-primary">Gateways da Plataforma</h1>
+            <span className="text-[11px] font-mono text-text-muted">({configured} ativos)</span>
+          </div>
+          <p className="text-[12px] text-text-muted">
+            Contas da plataforma para receber split por gateway. Uma conta por gateway.
+          </p>
+        </div>
+        <button
+          onClick={fetchAccounts}
+          className="flex items-center gap-1.5 text-[11px] text-text-muted hover:text-text-primary border border-border-subtle hover:border-primary/30 px-3 py-1.5 rounded-lg transition-all"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Atualizar
+        </button>
+      </div>
+
+      {/* Info banner */}
+      <div className="rounded-xl border border-secondary/20 bg-secondary/5 px-4 py-3">
+        <p className="text-[11px] text-text-muted">
+          Cada gateway configurado aqui recebe automaticamente a taxa de split quando um usuário da plataforma processa um pagamento por aquele gateway.
+          Configure o percentual de split por usuário em <span className="text-secondary">Usuários → Editar</span>.
+        </p>
+      </div>
+
+      {/* Gateway cards grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {loading
+          ? GATEWAYS.map((_, i) => (
+              <div key={i} className="rounded-xl border border-border-subtle bg-surface p-5">
+                <div className="h-4 w-32 bg-white/5 rounded animate-pulse mb-3" />
+                <div className="h-3 w-24 bg-white/5 rounded animate-pulse" />
+              </div>
+            ))
+          : GATEWAYS.map((def) => {
+              const acc = getAccount(def.type);
+              const isConfigured = !!acc;
+              const isActive = acc?.is_active ?? false;
+
+              return (
+                <div
+                  key={def.type}
+                  className={`rounded-xl border bg-surface p-5 flex flex-col gap-3 transition-colors ${
+                    isActive
+                      ? "border-success/30 bg-success/3"
+                      : isConfigured
+                      ? "border-border-subtle"
+                      : "border-border-subtle opacity-70"
+                  }`}
+                >
+                  {/* Card header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Landmark className={`w-4 h-4 ${isActive ? "text-success" : "text-text-muted"}`} />
+                      <span className="text-sm font-semibold text-text-primary">{def.label}</span>
+                    </div>
+                    {isConfigured ? (
+                      isActive ? (
+                        <span className="flex items-center gap-1 text-[10px] text-success bg-success/10 border border-success/20 px-2 py-0.5 rounded">
+                          <div className="w-1 h-1 rounded-full bg-success" /> Ativo
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-text-muted bg-white/5 border border-white/10 px-2 py-0.5 rounded">
+                          Inativo
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-[10px] text-text-muted">Não configurado</span>
+                    )}
+                  </div>
+
+                  {/* Credential status */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5">
+                      {acc?.has_api_key ? (
+                        <CheckCircle2 className="w-3 h-3 text-success" />
+                      ) : (
+                        <XCircle className="w-3 h-3 text-text-muted" />
+                      )}
+                      <span className="text-[11px] text-text-muted">{def.apiKeyLabel}</span>
+                    </div>
+                    {def.secretKeyLabel && (
+                      <div className="flex items-center gap-1.5">
+                        {acc?.has_secret_key ? (
+                          <CheckCircle2 className="w-3 h-3 text-success" />
+                        ) : (
+                          <XCircle className="w-3 h-3 text-text-muted" />
+                        )}
+                        <span className="text-[11px] text-text-muted">{def.secretKeyLabel}</span>
+                      </div>
+                    )}
+                    {acc?.nickname && (
+                      <p className="text-[10px] text-text-muted mt-1 truncate">"{acc.nickname}"</p>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 mt-auto pt-1">
+                    <button
+                      onClick={() => setModalDef(def)}
+                      className="flex-1 flex items-center justify-center gap-1.5 text-[11px] border border-border-subtle hover:border-secondary/40 hover:text-secondary text-text-muted px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                      {isConfigured ? "Editar" : "Configurar"}
+                    </button>
+                    {isConfigured && (
+                      <button
+                        onClick={() => handleDelete(def.type)}
+                        disabled={deleting === def.type}
+                        className="flex items-center justify-center gap-1.5 text-[11px] border border-border-subtle hover:border-danger/40 hover:text-danger text-text-muted px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+      </div>
+
+      {/* Modal */}
+      {modalDef && (
+        <GatewayModal
+          def={modalDef}
+          existing={getAccount(modalDef.type)}
+          onClose={() => setModalDef(null)}
+          onSaved={fetchAccounts}
+        />
+      )}
+    </div>
+  );
+}

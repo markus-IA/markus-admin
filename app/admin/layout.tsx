@@ -6,16 +6,17 @@ import Link from "next/link";
 import { useAuthStore } from "@/lib/auth-store";
 import {
   Shield, LayoutDashboard, Users, Layers,
-  Send, Copy, HeartPulse, LogOut, ChevronRight,
+  Send, Copy, HeartPulse, LogOut, ChevronRight, Landmark,
 } from "lucide-react";
 
 const NAV = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
-  { icon: Users,           label: "Usuários",  href: "/admin/usuarios" },
-  { icon: Layers,          label: "Filas",     href: "/admin/filas" },
-  { icon: Send,            label: "Broadcasts",href: "/admin/broadcasts" },
-  { icon: Copy,            label: "Duplicatas",href: "/admin/duplicatas" },
-  { icon: HeartPulse,      label: "Health",    href: "/admin/health" },
+  { icon: LayoutDashboard, label: "Dashboard",  href: "/admin" },
+  { icon: Users,           label: "Usuários",   href: "/admin/usuarios" },
+  { icon: Landmark,        label: "Gateways",   href: "/admin/gateways" },
+  { icon: Layers,          label: "Filas",      href: "/admin/filas" },
+  { icon: Send,            label: "Broadcasts", href: "/admin/broadcasts" },
+  { icon: Copy,            label: "Duplicatas", href: "/admin/duplicatas" },
+  { icon: HeartPulse,      label: "Health",     href: "/admin/health" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
