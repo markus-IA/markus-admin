@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, RefreshCw, Layers, RotateCcw } from "lucide-react";
+import { AlertTriangle, RefreshCw, Layers, RotateCcw, Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import toast from "react-hot-toast";
 
 interface QueueInfo {
   name: string;
@@ -22,10 +23,11 @@ interface FailedTask {
 }
 
 const QUEUE_META: Record<string, { priority: number; color: string }> = {
-  critical:  { priority: 6, color: "danger" },
-  default:   { priority: 3, color: "primary" },
-  broadcast: { priority: 1, color: "secondary" },
-  tracking:  { priority: 3, color: "success" },
+  critical:       { priority: 6, color: "danger" },
+  default:        { priority: 3, color: "primary" },
+  broadcast:      { priority: 1, color: "secondary" },
+  broadcast_flow: { priority: 1, color: "secondary" },
+  tracking:       { priority: 3, color: "success" },
 };
 
 const COLOR_CLASSES: Record<string, { text: string; bg: string; border: string }> = {
@@ -41,6 +43,8 @@ export default function AdminFilasPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [retrying, setRetrying] = useState<string | null>(null);
+  const [purging, setPurging] = useState(false);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -62,6 +66,33 @@ export default function AdminFilasPage() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleRetry = async (queue: string, taskId: string) => {
+    setRetrying(taskId);
+    try {
+      await apiFetch(`/api/v1/admin/queues/${queue}/tasks/${taskId}/retry`, { method: "POST" });
+      toast.success("Task reenfileirada.");
+      fetchData(true);
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao retentar task.");
+    } finally {
+      setRetrying(null);
+    }
+  };
+
+  const handlePurge = async () => {
+    if (!confirm("Apagar todas as tasks com falha de todas as filas?")) return;
+    setPurging(true);
+    try {
+      const res = await apiFetch<{ deleted: number }>("/api/v1/admin/queues/purge", { method: "POST" });
+      toast.success(`${res.deleted} task(s) removida(s).`);
+      fetchData(true);
+    } catch {
+      toast.error("Erro ao limpar dead queue.");
+    } finally {
+      setPurging(false);
+    }
+  };
 
   const totalFailed = queues.reduce((s, q) => s + q.failed, 0);
 
@@ -165,12 +196,24 @@ export default function AdminFilasPage() {
 
       {/* Failed tasks table */}
       <div className="rounded-xl border border-border-subtle bg-surface overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-border-subtle">
-          <AlertTriangle className="w-4 h-4 text-danger" />
-          <h3 className="text-sm font-semibold text-text-primary">Tasks com Falha</h3>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-danger/10 border border-danger/20 text-danger">
-            {totalFailed.toLocaleString("pt-BR")}
-          </span>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-danger" />
+            <h3 className="text-sm font-semibold text-text-primary">Tasks com Falha</h3>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-danger/10 border border-danger/20 text-danger">
+              {totalFailed.toLocaleString("pt-BR")}
+            </span>
+          </div>
+          {totalFailed > 0 && (
+            <button
+              onClick={handlePurge}
+              disabled={purging}
+              className="flex items-center gap-1.5 text-[11px] text-danger border border-danger/30 hover:bg-danger/10 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="w-3 h-3" />
+              {purging ? "Limpando..." : "Limpar tudo"}
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -212,12 +255,12 @@ export default function AdminFilasPage() {
                     </td>
                     <td className="px-5 py-3">
                       <button
-                        className="flex items-center gap-1 text-[10px] text-text-muted border border-border-subtle hover:border-primary/30 hover:text-primary px-2 py-1 rounded-lg transition-colors ml-auto opacity-50 cursor-not-allowed"
-                        disabled
-                        title="Em breve"
+                        onClick={() => handleRetry(task.queue, task.id)}
+                        disabled={retrying === task.id}
+                        className="flex items-center gap-1 text-[10px] text-text-muted border border-border-subtle hover:border-primary/30 hover:text-primary px-2 py-1 rounded-lg transition-colors ml-auto disabled:opacity-50"
                       >
-                        <RotateCcw className="w-3 h-3" />
-                        Retry
+                        <RotateCcw className={`w-3 h-3 ${retrying === task.id ? "animate-spin" : ""}`} />
+                        {retrying === task.id ? "..." : "Retry"}
                       </button>
                     </td>
                   </tr>
