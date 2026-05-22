@@ -55,8 +55,8 @@ export default function AdminFilasPage() {
         apiFetch<QueueInfo[]>("/api/v1/admin/queues"),
         apiFetch<FailedTask[]>("/api/v1/admin/queues/failed"),
       ]);
-      setQueues(q);
-      setFailedTasks(f);
+      setQueues(Array.isArray(q) ? q : []);
+      setFailedTasks(Array.isArray(f) ? f : []);
     } catch {
       setError("Erro ao carregar dados das filas.");
     } finally {
