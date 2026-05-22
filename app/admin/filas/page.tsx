@@ -86,7 +86,7 @@ export default function AdminFilasPage() {
     try {
       const res = await apiFetch<{ deleted: number }>("/api/v1/admin/queues/purge", { method: "POST" });
       toast.success(`${res.deleted} task(s) removida(s).`);
-      fetchData(true);
+      await fetchData(true);
     } catch {
       toast.error("Erro ao limpar dead queue.");
     } finally {
