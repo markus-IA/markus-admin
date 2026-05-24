@@ -21,9 +21,8 @@ export default function AlertasPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    apiFetch("/api/v1/admin/system-alert")
-      .then((r: Response) => r.json())
-      .then((data: SystemAlert) => {
+    apiFetch<SystemAlert>("/api/v1/admin/system-alert")
+      .then((data) => {
         setAlert(data);
         if (data.message) setMessage(data.message);
       })
@@ -33,12 +32,11 @@ export default function AlertasPage() {
   async function toggle() {
     setSaving(true);
     try {
-      const res = await apiFetch("/api/v1/admin/system-alert", {
+      const data = await apiFetch<SystemAlert>("/api/v1/admin/system-alert", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: !alert.enabled, message }),
       });
-      const data: SystemAlert = await res.json();
       setAlert(data);
       setMessage(data.message);
       setSaved(true);
@@ -52,12 +50,11 @@ export default function AlertasPage() {
     if (!alert.enabled) return;
     setSaving(true);
     try {
-      const res = await apiFetch("/api/v1/admin/system-alert", {
+      const data = await apiFetch<SystemAlert>("/api/v1/admin/system-alert", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: alert.enabled, message }),
       });
-      const data: SystemAlert = await res.json();
       setAlert(data);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
