@@ -22,7 +22,7 @@ export default function AlertasPage() {
 
   useEffect(() => {
     apiFetch("/api/v1/admin/system-alert")
-      .then((r) => r.json())
+      .then((r: Response) => r.json())
       .then((data: SystemAlert) => {
         setAlert(data);
         if (data.message) setMessage(data.message);
