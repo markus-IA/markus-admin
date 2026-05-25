@@ -313,20 +313,18 @@ function GatewayModal({
                 <Percent className="w-3 h-3" />
                 Percentual
               </button>
-              {!def.percentageOnly && (
-                <button
-                  type="button"
-                  onClick={() => setSplitType("fixed")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
-                    splitType === "fixed"
-                      ? "bg-primary/15 text-primary"
-                      : "text-text-muted hover:bg-white/5"
-                  }`}
-                >
-                  <DollarSign className="w-3 h-3" />
-                  Fixo (R$)
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setSplitType("fixed")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
+                  splitType === "fixed"
+                    ? "bg-primary/15 text-primary"
+                    : "text-text-muted hover:bg-white/5"
+                }`}
+              >
+                <DollarSign className="w-3 h-3" />
+                Fixo (R$)
+              </button>
             </div>
           </div>
 
