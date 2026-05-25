@@ -16,7 +16,9 @@ interface GatewayDef {
   label: string;
   apiKeyLabel: string;
   secretKeyLabel?: string;
-  hasAccountId?: boolean; // gateways que precisam de account_id para split
+  hasAccountId?: boolean;    // gateways que precisam de account_id para split
+  accountIdLabel?: string;   // label customizado para o campo account_id
+  noApiKey?: boolean;        // gateways onde a plataforma não precisa de API Key (ex: PixGate split por username)
 }
 
 const GATEWAYS: GatewayDef[] = [
@@ -24,7 +26,7 @@ const GATEWAYS: GatewayDef[] = [
   { type: "wiinpay",   label: "WiinPay",    apiKeyLabel: "API Key" },
   { type: "oasyfy",    label: "Oasyfy",     apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key" },
   { type: "syncpay",   label: "SyncPay",    apiKeyLabel: "Client ID",    secretKeyLabel: "Client Secret" },
-  { type: "pixgate",   label: "PixGate",    apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key", hasAccountId: true },
+  { type: "pixgate",   label: "PixGate",    apiKeyLabel: "API Key",      hasAccountId: true, noApiKey: true, accountIdLabel: "Username PixGate da plataforma" },
   { type: "paradise",  label: "Paradise",   apiKeyLabel: "API Key",      secretKeyLabel: "Product Hash" },
   { type: "cnpay",     label: "CNPay",      apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key" },
   { type: "nexuspay",  label: "NexusPay",   apiKeyLabel: "API Key",      hasAccountId: true },
@@ -142,7 +144,7 @@ function GatewayModal({
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!existing && !apiKey.trim()) {
+    if (!def.noApiKey && !existing && !apiKey.trim()) {
       toast.error(`${def.apiKeyLabel} é obrigatório.`);
       return;
     }
@@ -222,7 +224,8 @@ function GatewayModal({
             />
           </div>
 
-          {/* API Key */}
+          {/* API Key — oculto para gateways onde a plataforma não precisa de chave */}
+          {!def.noApiKey && (
           <div>
             <label className="text-[11px] text-text-muted block mb-1">
               {def.apiKeyLabel}
@@ -241,9 +244,10 @@ function GatewayModal({
               </button>
             </div>
           </div>
+          )}
 
           {/* Secret Key */}
-          {def.secretKeyLabel && (
+          {!def.noApiKey && def.secretKeyLabel && (
             <div>
               <label className="text-[11px] text-text-muted block mb-1">
                 {def.secretKeyLabel}
@@ -264,11 +268,11 @@ function GatewayModal({
             </div>
           )}
 
-          {/* Account ID — obrigatório para PushinPay split */}
+          {/* Account ID / Username da plataforma para split */}
           {def.hasAccountId && (
             <div>
               <label className="text-[11px] text-text-muted block mb-1">
-                Account ID da plataforma
+                {def.accountIdLabel ?? "Account ID da plataforma"}
                 {existing?.has_account_id
                   ? <span className="ml-2 text-success">● configurado</span>
                   : <span className="ml-2 text-danger">● necessário para split</span>
