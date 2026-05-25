@@ -25,7 +25,7 @@ interface GatewayDef {
 const GATEWAYS: GatewayDef[] = [
   { type: "pushinpay",  label: "PushinPay",  apiKeyLabel: "Token",        hasAccountId: true },
   { type: "wiinpay",   label: "WiinPay",    apiKeyLabel: "API Key" },
-  { type: "oasyfy",    label: "Oasyfy",     apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key" },
+  { type: "oasyfy",    label: "Oasyfy",     apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key", hasAccountId: true, accountIdLabel: "Producer ID da plataforma (Oasyfy)" },
   { type: "syncpay",   label: "SyncPay",    apiKeyLabel: "Client ID",    secretKeyLabel: "Client Secret" },
   { type: "pixgate",   label: "PixGate",    apiKeyLabel: "API Key",      hasAccountId: true, noApiKey: true, accountIdLabel: "Username PixGate da plataforma", percentageOnly: true },
   { type: "paradise",  label: "Paradise",   apiKeyLabel: "API Key",      secretKeyLabel: "Product Hash" },
