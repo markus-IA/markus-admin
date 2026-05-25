@@ -24,7 +24,7 @@ const GATEWAYS: GatewayDef[] = [
   { type: "wiinpay",   label: "WiinPay",    apiKeyLabel: "API Key" },
   { type: "oasyfy",    label: "Oasyfy",     apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key" },
   { type: "syncpay",   label: "SyncPay",    apiKeyLabel: "Client ID",    secretKeyLabel: "Client Secret" },
-  { type: "pixgate",   label: "PixGate",    apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key" },
+  { type: "pixgate",   label: "PixGate",    apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key", hasAccountId: true },
   { type: "paradise",  label: "Paradise",   apiKeyLabel: "API Key",      secretKeyLabel: "Product Hash" },
   { type: "cnpay",     label: "CNPay",      apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key" },
   { type: "nexuspay",  label: "NexusPay",   apiKeyLabel: "API Key",      hasAccountId: true },
