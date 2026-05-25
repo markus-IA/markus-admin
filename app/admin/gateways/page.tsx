@@ -27,7 +27,7 @@ const GATEWAYS: GatewayDef[] = [
   { type: "pixgate",   label: "PixGate",    apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key" },
   { type: "paradise",  label: "Paradise",   apiKeyLabel: "API Key",      secretKeyLabel: "Product Hash" },
   { type: "cnpay",     label: "CNPay",      apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key" },
-  { type: "nexuspay",  label: "NexusPay",   apiKeyLabel: "API Key" },
+  { type: "nexuspay",  label: "NexusPay",   apiKeyLabel: "API Key",      hasAccountId: true },
 ];
 
 const GATEWAY_LABELS: Record<string, string> = Object.fromEntries(
