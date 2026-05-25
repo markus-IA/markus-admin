@@ -16,10 +16,11 @@ interface GatewayDef {
   label: string;
   apiKeyLabel: string;
   secretKeyLabel?: string;
+  hasAccountId?: boolean; // gateways que precisam de account_id para split
 }
 
 const GATEWAYS: GatewayDef[] = [
-  { type: "pushinpay",  label: "PushinPay",  apiKeyLabel: "Token" },
+  { type: "pushinpay",  label: "PushinPay",  apiKeyLabel: "Token",        hasAccountId: true },
   { type: "wiinpay",   label: "WiinPay",    apiKeyLabel: "API Key" },
   { type: "oasyfy",    label: "Oasyfy",     apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key" },
   { type: "syncpay",   label: "SyncPay",    apiKeyLabel: "Client ID",    secretKeyLabel: "Client Secret" },
@@ -42,7 +43,10 @@ interface PlatformGateway {
   is_active: boolean;
   has_api_key: boolean;
   has_secret_key: boolean;
+  has_account_id: boolean;
   split_pct: number;
+  split_type: string;   // "percentage" | "fixed"
+  split_value: number;  // R$ fixo quando split_type="fixed"
   created_at: string;
   updated_at: string;
 }
@@ -51,7 +55,9 @@ interface GatewayRevenue {
   provider: string;
   count: number;
   volume: number;
+  split_type: string;
   split_pct: number;
+  split_value: number;
   split_revenue: number;
 }
 
@@ -123,10 +129,16 @@ function GatewayModal({
   const [nickname, setNickname] = useState(existing?.nickname ?? "");
   const [apiKey, setApiKey] = useState("");
   const [secretKey, setSecretKey] = useState("");
+  const [accountId, setAccountId] = useState("");
   const [isActive, setIsActive] = useState(existing?.is_active ?? true);
+  const [splitType, setSplitType] = useState<"percentage" | "fixed">(
+    (existing?.split_type as "percentage" | "fixed") ?? "percentage"
+  );
   const [splitPct, setSplitPct] = useState<string>(String(existing?.split_pct ?? 0));
+  const [splitValue, setSplitValue] = useState<string>(String(existing?.split_value ?? 0));
   const [showApi, setShowApi] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
+  const [showAccountId, setShowAccountId] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -134,16 +146,31 @@ function GatewayModal({
       toast.error(`${def.apiKeyLabel} é obrigatório.`);
       return;
     }
-    const pct = parseFloat(splitPct);
-    if (isNaN(pct) || pct < 0 || pct > 100) {
-      toast.error("Percentual de split deve ser entre 0 e 100.");
-      return;
+    if (splitType === "percentage") {
+      const pct = parseFloat(splitPct);
+      if (isNaN(pct) || pct < 0 || pct > 100) {
+        toast.error("Percentual de split deve ser entre 0 e 100.");
+        return;
+      }
+    } else {
+      const val = parseFloat(splitValue);
+      if (isNaN(val) || val < 0) {
+        toast.error("Valor fixo de split não pode ser negativo.");
+        return;
+      }
     }
     setSaving(true);
     try {
-      const body: Record<string, unknown> = { nickname, is_active: isActive, split_pct: pct };
+      const body: Record<string, unknown> = {
+        nickname,
+        is_active: isActive,
+        split_type: splitType,
+        split_pct: splitType === "percentage" ? parseFloat(splitPct) : 0,
+        split_value: splitType === "fixed" ? parseFloat(splitValue) : 0,
+      };
       if (apiKey.trim()) body.api_key = apiKey.trim();
       if (secretKey.trim()) body.secret_key = secretKey.trim();
+      if (accountId.trim()) body.account_id = accountId.trim();
 
       await apiFetch(`/api/v1/admin/gateways/${def.type}`, {
         method: "PUT",
@@ -159,6 +186,11 @@ function GatewayModal({
       setSaving(false);
     }
   };
+
+  const previewAmount = 100;
+  const splitPreview = splitType === "percentage"
+    ? previewAmount * parseFloat(splitPct || "0") / 100
+    : parseFloat(splitValue || "0");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -178,7 +210,7 @@ function GatewayModal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
           {/* Nickname */}
           <div>
             <label className="text-[11px] text-text-muted block mb-1">Apelido (identificação interna)</label>
@@ -232,33 +264,114 @@ function GatewayModal({
             </div>
           )}
 
-          {/* Split percentage */}
-          <div>
-            <label className="text-[11px] text-text-muted block mb-1">
-              Percentual de split que você recebe (%)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
-                value={splitPct}
-                onChange={(e) => setSplitPct(e.target.value)}
-                placeholder="ex: 10"
-                className="w-full bg-surface border border-border-subtle rounded-lg pl-3 pr-9 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-secondary/40"
-              />
-              <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
-            </div>
-            {parseFloat(splitPct) > 0 && (
+          {/* Account ID — obrigatório para PushinPay split */}
+          {def.hasAccountId && (
+            <div>
+              <label className="text-[11px] text-text-muted block mb-1">
+                Account ID da plataforma
+                {existing?.has_account_id
+                  ? <span className="ml-2 text-success">● configurado</span>
+                  : <span className="ml-2 text-danger">● necessário para split</span>
+                }
+              </label>
+              <div className="relative">
+                <input
+                  type={showAccountId ? "text" : "password"}
+                  value={accountId}
+                  onChange={(e) => setAccountId(e.target.value)}
+                  placeholder={existing?.has_account_id ? "Deixe em branco para manter o atual" : "ex: 9C3XXXXX3A043"}
+                  className="w-full bg-surface border border-border-subtle rounded-lg pl-3 pr-9 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-secondary/40"
+                />
+                <button type="button" onClick={() => setShowAccountId((v) => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary">
+                  {showAccountId ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
               <p className="text-[10px] text-text-muted mt-1">
-                Em uma venda de R$ 100,00 você recebe{" "}
-                <span className="text-success font-medium">
-                  {fmtBRL(100 * parseFloat(splitPct) / 100)}
-                </span>
+                ID da conta {def.label} da plataforma — destino do split. Encontrado no painel do gateway.
               </p>
-            )}
+            </div>
+          )}
+
+          {/* Split type toggle */}
+          <div>
+            <label className="text-[11px] text-text-muted block mb-2">Tipo de split que você recebe</label>
+            <div className="flex rounded-lg overflow-hidden border border-border-subtle">
+              <button
+                type="button"
+                onClick={() => setSplitType("percentage")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
+                  splitType === "percentage"
+                    ? "bg-primary/15 text-primary border-r border-primary/30"
+                    : "text-text-muted hover:bg-white/5 border-r border-border-subtle"
+                }`}
+              >
+                <Percent className="w-3 h-3" />
+                Percentual
+              </button>
+              <button
+                type="button"
+                onClick={() => setSplitType("fixed")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
+                  splitType === "fixed"
+                    ? "bg-primary/15 text-primary"
+                    : "text-text-muted hover:bg-white/5"
+                }`}
+              >
+                <DollarSign className="w-3 h-3" />
+                Fixo (R$)
+              </button>
+            </div>
           </div>
+
+          {/* Split value input */}
+          {splitType === "percentage" ? (
+            <div>
+              <label className="text-[11px] text-text-muted block mb-1">Percentual (%)</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={splitPct}
+                  onChange={(e) => setSplitPct(e.target.value)}
+                  placeholder="ex: 10"
+                  className="w-full bg-surface border border-border-subtle rounded-lg pl-3 pr-9 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-secondary/40"
+                />
+                <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="text-[11px] text-text-muted block mb-1">Valor fixo por transação (R$)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted pointer-events-none">R$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={splitValue}
+                  onChange={(e) => setSplitValue(e.target.value)}
+                  placeholder="ex: 5.00"
+                  className="w-full bg-surface border border-border-subtle rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-secondary/40"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Preview */}
+          {splitPreview > 0 && (
+            <p className="text-[10px] text-text-muted">
+              {splitType === "percentage"
+                ? `Em uma venda de R$ 100,00 você recebe `
+                : `Por transação você recebe `}
+              <span className="text-success font-medium">{fmtBRL(splitPreview)}</span>
+              {splitType === "percentage" && ` · Em R$ 500,00 = `}
+              {splitType === "percentage" && (
+                <span className="text-success font-medium">{fmtBRL(500 * parseFloat(splitPct || "0") / 100)}</span>
+              )}
+            </p>
+          )}
 
           {/* Active toggle */}
           <label className="flex items-center gap-2 cursor-pointer">
@@ -446,7 +559,7 @@ function SplitRevenueSection() {
                 <th className="text-left px-5 py-2.5 text-[10px] font-semibold text-text-muted tracking-wider">GATEWAY</th>
                 <th className="text-right px-4 py-2.5 text-[10px] font-semibold text-text-muted tracking-wider">TRANSAÇÕES</th>
                 <th className="text-right px-4 py-2.5 text-[10px] font-semibold text-text-muted tracking-wider">VOLUME</th>
-                <th className="text-right px-4 py-2.5 text-[10px] font-semibold text-text-muted tracking-wider">SPLIT %</th>
+                <th className="text-right px-4 py-2.5 text-[10px] font-semibold text-text-muted tracking-wider">SPLIT</th>
                 <th className="text-right px-5 py-2.5 text-[10px] font-semibold text-text-muted tracking-wider">SUA RECEITA</th>
               </tr>
             </thead>
@@ -485,9 +598,15 @@ function SplitRevenueSection() {
                       <span className="text-xs text-text-secondary">{fmtBRL(g.volume)}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className={`text-xs font-medium ${g.split_pct > 0 ? "text-primary" : "text-text-muted"}`}>
-                        {g.split_pct > 0 ? `${g.split_pct}%` : "—"}
-                      </span>
+                      {g.split_type === "fixed" ? (
+                        <span className={`text-xs font-medium ${g.split_value > 0 ? "text-primary" : "text-text-muted"}`}>
+                          {g.split_value > 0 ? fmtBRL(g.split_value) : "—"}
+                        </span>
+                      ) : (
+                        <span className={`text-xs font-medium ${g.split_pct > 0 ? "text-primary" : "text-text-muted"}`}>
+                          {g.split_pct > 0 ? `${g.split_pct}%` : "—"}
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <span className={`text-xs font-bold ${g.split_revenue > 0 ? "text-success" : "text-text-muted"}`}>
@@ -633,7 +752,7 @@ export default function AdminGatewaysPage() {
                       )}
                     </div>
 
-                    {/* Credential status + split pct */}
+                    {/* Credential status + split info */}
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-1.5">
                         {acc?.has_api_key ? (
@@ -653,12 +772,35 @@ export default function AdminGatewaysPage() {
                           <span className="text-[11px] text-text-muted">{def.secretKeyLabel}</span>
                         </div>
                       )}
+                      {def.hasAccountId && (
+                        <div className="flex items-center gap-1.5">
+                          {acc?.has_account_id ? (
+                            <CheckCircle2 className="w-3 h-3 text-success" />
+                          ) : (
+                            <XCircle className="w-3 h-3 text-danger" />
+                          )}
+                          <span className={`text-[11px] ${acc?.has_account_id ? "text-text-muted" : "text-danger"}`}>
+                            Account ID {acc?.has_account_id ? "" : "(faltando!)"}
+                          </span>
+                        </div>
+                      )}
                       {isConfigured && (
                         <div className="flex items-center gap-1.5 mt-1">
-                          <Percent className="w-3 h-3 text-primary shrink-0" />
-                          <span className="text-[11px] text-primary font-medium">
-                            {acc?.split_pct ?? 0}% split
-                          </span>
+                          {acc?.split_type === "fixed" ? (
+                            <>
+                              <DollarSign className="w-3 h-3 text-primary shrink-0" />
+                              <span className="text-[11px] text-primary font-medium">
+                                {fmtBRL(acc?.split_value ?? 0)} fixo/tx
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Percent className="w-3 h-3 text-primary shrink-0" />
+                              <span className="text-[11px] text-primary font-medium">
+                                {acc?.split_pct ?? 0}% split
+                              </span>
+                            </>
+                          )}
                         </div>
                       )}
                       {acc?.nickname && (
