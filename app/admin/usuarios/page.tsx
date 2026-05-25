@@ -5,19 +5,19 @@ import { apiFetch } from "@/lib/api";
 import { AdminUser } from "@/types";
 import toast from "react-hot-toast";
 import {
-  Search, Filter, Shield, Users, CheckCircle2, XCircle,
-  ChevronDown, Calendar, X, Edit2, UserCheck, RefreshCw,
+  Search, Users, X, Edit2, RefreshCw, ShieldCheck, ShieldOff,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface EditPlanForm {
+interface EditUserForm {
   is_active: boolean;
+  role: "admin" | "user";
 }
 
 // ─── Modal ───────────────────────────────────────────────────────────────────
 
-function EditPlanModal({
+function EditUserModal({
   user,
   onClose,
   onSaved,
@@ -26,21 +26,45 @@ function EditPlanModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState<EditPlanForm>({
+  const [form, setForm] = useState<EditUserForm>({
     is_active: user.is_active,
+    role: (user.role as "admin" | "user") ?? "user",
   });
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await apiFetch(`/api/v1/admin/users/${user.id}/status`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          is_active: form.is_active,
-        }),
-      });
+      const calls: Promise<unknown>[] = [];
+
+      // Atualiza is_active se mudou
+      if (form.is_active !== user.is_active) {
+        calls.push(
+          apiFetch(`/api/v1/admin/users/${user.id}/status`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ is_active: form.is_active }),
+          })
+        );
+      }
+
+      // Atualiza role se mudou
+      if (form.role !== (user.role ?? "user")) {
+        calls.push(
+          apiFetch(`/api/v1/admin/users/${user.id}/role`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: form.role }),
+          })
+        );
+      }
+
+      if (calls.length === 0) {
+        onClose();
+        return;
+      }
+
+      await Promise.all(calls);
       toast.success("Usuário atualizado com sucesso.");
       onSaved();
       onClose();
@@ -50,6 +74,8 @@ function EditPlanModal({
       setSaving(false);
     }
   };
+
+  const isAdmin = form.role === "admin";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -67,25 +93,65 @@ function EditPlanModal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-4">
-          {/* Toggles */}
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
+        <div className="px-6 py-5 space-y-5">
+          {/* Status */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-text-primary">Conta ativa</p>
+              <p className="text-[11px] text-text-muted">Permite ou bloqueia o acesso do usuário</p>
+            </div>
+            <div
+              onClick={() => setForm((f) => ({ ...f, is_active: !f.is_active }))}
+              className={`relative w-10 h-5 rounded-full cursor-pointer transition-colors ${
+                form.is_active ? "bg-success" : "bg-white/10"
+              }`}
+            >
               <div
-                onClick={() => setForm((f) => ({ ...f, is_active: !f.is_active }))}
-                className={`relative w-9 h-5 rounded-full transition-colors ${
-                  form.is_active ? "bg-success" : "bg-white/10"
+                className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                  form.is_active ? "translate-x-5" : "translate-x-0.5"
                 }`}
-              >
-                <div
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                    form.is_active ? "translate-x-4" : "translate-x-0.5"
-                  }`}
-                />
-              </div>
-              <span className="text-xs text-text-secondary">Ativo</span>
-            </label>
+              />
+            </div>
           </div>
+
+          <div className="border-t border-border-subtle" />
+
+          {/* Role */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {isAdmin ? (
+                <ShieldCheck className="w-4 h-4 text-secondary shrink-0" />
+              ) : (
+                <ShieldOff className="w-4 h-4 text-text-muted shrink-0" />
+              )}
+              <div>
+                <p className="text-xs font-medium text-text-primary">Permissão admin</p>
+                <p className="text-[11px] text-text-muted">Acesso ao painel administrativo</p>
+              </div>
+            </div>
+            <div
+              onClick={() => setForm((f) => ({ ...f, role: f.role === "admin" ? "user" : "admin" }))}
+              className={`relative w-10 h-5 rounded-full cursor-pointer transition-colors ${
+                isAdmin ? "bg-secondary" : "bg-white/10"
+              }`}
+            >
+              <div
+                className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                  isAdmin ? "translate-x-5" : "translate-x-0.5"
+                }`}
+              />
+            </div>
+          </div>
+
+          {/* Aviso ao promover */}
+          {isAdmin && (user.role ?? "user") !== "admin" && (
+            <div className="flex items-start gap-2 bg-secondary/10 border border-secondary/25 rounded-lg px-3 py-2.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-secondary mt-0.5 shrink-0" />
+              <p className="text-[11px] text-secondary leading-relaxed">
+                Este usuário terá acesso completo ao painel admin, incluindo gestão de usuários e gateways.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -366,7 +432,7 @@ export default function AdminUsersPage() {
 
       {/* Edit modal */}
       {editUser && (
-        <EditPlanModal
+        <EditUserModal
           user={editUser}
           onClose={() => setEditUser(null)}
           onSaved={fetchUsers}
