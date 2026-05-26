@@ -26,7 +26,7 @@ const GATEWAYS: GatewayDef[] = [
   { type: "pushinpay",  label: "PushinPay",  apiKeyLabel: "Token",        hasAccountId: true },
   { type: "wiinpay",   label: "WiinPay",    apiKeyLabel: "API Key", hasAccountId: true, noApiKey: true, accountIdLabel: "User ID WiinPay da plataforma" },
   { type: "oasyfy",    label: "Oasyfy",     apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key", hasAccountId: true, accountIdLabel: "Producer ID da plataforma (Oasyfy)" },
-  { type: "syncpay",   label: "SyncPay",    apiKeyLabel: "Client ID",    secretKeyLabel: "Client Secret" },
+  { type: "syncpay",   label: "SyncPay",    apiKeyLabel: "Client ID",    secretKeyLabel: "Client Secret", hasAccountId: true, noApiKey: true, accountIdLabel: "Client ID da plataforma (SyncPay)", percentageOnly: true },
   { type: "pixgate",   label: "PixGate",    apiKeyLabel: "API Key",      hasAccountId: true, noApiKey: true, accountIdLabel: "Username PixGate da plataforma", percentageOnly: true },
   { type: "paradise",  label: "Paradise",   apiKeyLabel: "API Key",      secretKeyLabel: "Product Hash" },
   { type: "cnpay",     label: "CNPay",      apiKeyLabel: "Public Key",   secretKeyLabel: "Secret Key" },
@@ -313,18 +313,20 @@ function GatewayModal({
                 <Percent className="w-3 h-3" />
                 Percentual
               </button>
-              <button
-                type="button"
-                onClick={() => setSplitType("fixed")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
-                  splitType === "fixed"
-                    ? "bg-primary/15 text-primary"
-                    : "text-text-muted hover:bg-white/5"
-                }`}
-              >
-                <DollarSign className="w-3 h-3" />
-                Fixo (R$)
-              </button>
+              {!def.percentageOnly && (
+                <button
+                  type="button"
+                  onClick={() => setSplitType("fixed")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
+                    splitType === "fixed"
+                      ? "bg-primary/15 text-primary"
+                      : "text-text-muted hover:bg-white/5"
+                  }`}
+                >
+                  <DollarSign className="w-3 h-3" />
+                  Fixo (R$)
+                </button>
+              )}
             </div>
           </div>
 
